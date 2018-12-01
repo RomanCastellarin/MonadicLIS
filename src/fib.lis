@@ -1,0 +1,20 @@
+
+N := 8;
+
+if N=1 then ans := 0 else
+	if N=2 | N=3 then ans := 1 else
+		a := 0;
+		b := 1;
+		j := 0;
+		
+		while j < N-3 do
+		    temp := b;
+		    b := b + a;
+		    a := temp;
+
+		    j := j + 1
+		end;
+
+		ans := a + b
+	end
+end

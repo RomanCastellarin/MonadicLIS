@@ -52,27 +52,52 @@ evalComm :: MonadState m => Comm -> m ()
 evalComm Skip = return ()
 evalComm (Let varA intA) = evalIntExp intA >>= update varA
 evalComm (Seq comA comB) = evalComm comA >>= \x -> evalComm comB
-evalComm (Cond bool comA comB) = evalBoolExp bool >>=
-                                 \x -> if x 
-                                       then evalComm comA 
-                                       else evalComm comB
-                              
-{--
-evalComm (Let varA intA) state = update varA (evalIntExp intA state) state
-evalComm (Seq comA comB) state = let state' = evalComm comA state 
-                                 in evalComm comB state'
-evalComm (Cond bool comA comB) state = if (evalBoolExp bool state) 
-                               then evalComm comA state 
-                               else evalComm comB state
-evalComm (Repeat comA bool) state = let state' = evalComm comA state in
-                                    if (evalBoolExp bool state')
-                                    then evalComm Skip state'
-                                    else evalComm (Repeat comA bool) state'
---}
+evalComm (Cond boolE comA comB) = do b <- evalBoolExp boolE
+                                     if b 
+                                     then evalComm comA 
+                                     else evalComm comB
+evalComm (While boolE comA) = do b <- evalBoolExp boolE
+                                 if b
+                                 then evalComm (Seq comA $ While boolE comA)
+                                 else evalComm Skip
+
+
 -- Evalua una expresion entera, sin efectos laterales
 evalIntExp :: MonadState m => IntExp -> m Int
-evalIntExp = undefined
+evalIntExp (Const intA)      = return intA
+evalIntExp (Var varA)        = lookfor varA
+evalIntExp (UMinus intA)     = evalIntExp intA >>= return . negate                               
+evalIntExp (Plus intA intB)  = do left <- evalIntExp intA 
+                                  right <- evalIntExp intB
+                                  return $ left + right
+evalIntExp (Minus intA intB) = do left <- evalIntExp intA
+                                  right <- evalIntExp intB
+                                  return $ left - right
+evalIntExp (Times intA intB) = do left <- evalIntExp intA
+                                  right <- evalIntExp intB
+                                  return $ left * right
+evalIntExp (Div intA intB)   = do left <- evalIntExp intA
+                                  right <- evalIntExp intB
+                                  return $ left `div` right
 
 -- Evalua una expresion entera, sin efectos laterales
 evalBoolExp :: MonadState m => BoolExp -> m Bool
-evalBoolExp = undefined
+evalBoolExp BTrue             = return True
+evalBoolExp BFalse            = return False 
+evalBoolExp (Eq intA intB)    = do left <- evalIntExp intA
+                                   right <- evalIntExp intB
+                                   return $ left == right
+evalBoolExp (Lt intA intB)    = do left <- evalIntExp intA
+                                   right <- evalIntExp intB
+                                   return $ left < right
+evalBoolExp (Gt intA intB)    = do left <- evalIntExp intA
+                                   right <- evalIntExp intB
+                                   return $ left > right
+evalBoolExp (And boolA boolB) = do left <- evalBoolExp boolA
+                                   right <- evalBoolExp boolB
+                                   return $ left && right
+evalBoolExp (Or boolA boolB)  = do left <- evalBoolExp boolA
+                                   right <- evalBoolExp boolB
+                                   return $ left || right
+evalBoolExp (Not bool)        = evalBoolExp bool >>= return . not
+
